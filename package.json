@@ -1,0 +1,96 @@
+{
+    "name": "md-image-paste",
+    "displayName": "Markdown Image Paste",
+    "description": "Paste images from clipboard into Markdown files and save them automatically",
+    "version": "1.0.0",
+    "publisher": "yx",
+    "license": "MIT",
+    "engines": {
+      "vscode": "^1.80.0"
+    },
+    "categories": ["Other"],
+    "keywords": ["markdown", "image", "paste", "clipboard", "snipaste"],
+    "activationEvents": [],
+    "main": "./out/extension.js",
+    "contributes": {
+      "commands": [
+        {
+          "command": "mdImagePaste.pasteImage",
+          "title": "Paste Image from Clipboard",
+          "category": "Markdown Image Paste"
+        },
+        {
+          "command": "mdImagePaste.openSettings",
+          "title": "Open Settings",
+          "category": "Markdown Image Paste"
+        }
+      ],
+      "keybindings": [
+        {
+          "command": "mdImagePaste.pasteImage",
+          "key": "ctrl+v",
+          "mac": "cmd+v",
+          "when": "editorTextFocus && editorLangId == markdown"
+        }
+      ],
+      "configuration": {
+        "title": "Markdown Image Paste",
+        "properties": {
+          "mdImagePaste.saveDirectory": {
+            "type": "string",
+            "default": "${fileDir}/assets/images",
+            "description": "Directory to save pasted images. Supports variables: ${fileDir}, ${workspaceDir}, ${date}, ${year}, ${month}"
+          },
+          "mdImagePaste.fileNamePattern": {
+            "type": "string",
+            "default": "${date}_${random}",
+            "description": "File name pattern (without extension). Supports: ${date}, ${time}, ${random}, ${fileName}, ${year}, ${month}, ${day}"
+          },
+          "mdImagePaste.imageFormat": {
+            "type": "string",
+            "default": "png",
+            "enum": ["png", "jpg", "webp"],
+            "description": "Format to save pasted images"
+          },
+          "mdImagePaste.jpgQuality": {
+            "type": "number",
+            "default": 85,
+            "minimum": 1,
+            "maximum": 100,
+            "description": "JPEG quality (1-100), only used when imageFormat is jpg"
+          },
+          "mdImagePaste.mdLinkStyle": {
+            "type": "string",
+            "default": "relative",
+            "enum": ["relative", "absolute"],
+            "description": "Whether to use relative or absolute path in Markdown link"
+          },
+          "mdImagePaste.mdTemplate": {
+            "type": "string",
+            "default": "![${fileName}](${imagePath})",
+            "description": "Markdown image link template. Supports: ${fileName}, ${imagePath}, ${fileNameWithExt}"
+          },
+          "mdImagePaste.autoCreateDir": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically create save directory if it doesn't exist"
+          },
+          "mdImagePaste.showNotification": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show notification after successful paste"
+          }
+        }
+      }
+    },
+    "scripts": {
+      "vscode:prepublish": "npm run compile",
+      "compile": "tsc -p ./",
+      "watch": "tsc -watch -p ./"
+    },
+    "devDependencies": {
+      "@types/vscode": "^1.80.0",
+      "@types/node": "^18.0.0",
+      "typescript": "^5.0.0"
+    }
+  }
