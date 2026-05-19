@@ -1,81 +1,81 @@
 {
-    "name": "md-image-paste",
-    "displayName": "Markdown Image Paste",
+    "name": "img-drop",
+    "displayName": "ImgDrop",
     "description": "Paste images from clipboard into Markdown files and save them automatically",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "publisher": "yx",
     "license": "MIT",
     "engines": {
       "vscode": "^1.80.0"
     },
     "categories": ["Other"],
-    "keywords": ["markdown", "image", "paste", "clipboard", "snipaste"],
-    "activationEvents": [],
+    "keywords": ["markdown", "image", "paste", "clipboard", "snipaste", "imgdrop"],
+    "activationEvents": ["onLanguage:markdown"],
     "main": "./out/extension.js",
     "contributes": {
       "commands": [
         {
-          "command": "mdImagePaste.pasteImage",
+          "command": "imgDrop.pasteImage",
           "title": "Paste Image from Clipboard",
-          "category": "Markdown Image Paste"
+          "category": "ImgDrop"
         },
         {
-          "command": "mdImagePaste.openSettings",
+          "command": "imgDrop.openSettings",
           "title": "Open Settings",
-          "category": "Markdown Image Paste"
+          "category": "ImgDrop"
         }
       ],
       "keybindings": [
         {
-          "command": "mdImagePaste.pasteImage",
+          "command": "imgDrop.pasteImage",
           "key": "ctrl+v",
           "mac": "cmd+v",
           "when": "editorTextFocus && editorLangId == markdown"
         }
       ],
       "configuration": {
-        "title": "Markdown Image Paste",
+        "title": "ImgDrop",
         "properties": {
-          "mdImagePaste.saveDirectory": {
+          "imgDrop.saveDirectory": {
             "type": "string",
             "default": "${fileDir}/assets/images",
             "description": "Directory to save pasted images. Supports variables: ${fileDir}, ${workspaceDir}, ${date}, ${year}, ${month}"
           },
-          "mdImagePaste.fileNamePattern": {
+          "imgDrop.fileNamePattern": {
             "type": "string",
             "default": "${date}_${random}",
             "description": "File name pattern (without extension). Supports: ${date}, ${time}, ${random}, ${fileName}, ${year}, ${month}, ${day}"
           },
-          "mdImagePaste.imageFormat": {
+          "imgDrop.imageFormat": {
             "type": "string",
             "default": "png",
             "enum": ["png", "jpg", "webp"],
             "description": "Format to save pasted images"
           },
-          "mdImagePaste.jpgQuality": {
+          "imgDrop.jpgQuality": {
             "type": "number",
             "default": 85,
             "minimum": 1,
             "maximum": 100,
             "description": "JPEG quality (1-100), only used when imageFormat is jpg"
           },
-          "mdImagePaste.mdLinkStyle": {
+          "imgDrop.mdLinkStyle": {
             "type": "string",
             "default": "relative",
             "enum": ["relative", "absolute"],
             "description": "Whether to use relative or absolute path in Markdown link"
           },
-          "mdImagePaste.mdTemplate": {
+          "imgDrop.mdTemplate": {
             "type": "string",
             "default": "![${fileName}](${imagePath})",
             "description": "Markdown image link template. Supports: ${fileName}, ${imagePath}, ${fileNameWithExt}"
           },
-          "mdImagePaste.autoCreateDir": {
+          "imgDrop.autoCreateDir": {
             "type": "boolean",
             "default": true,
             "description": "Automatically create save directory if it doesn't exist"
           },
-          "mdImagePaste.showNotification": {
+          "imgDrop.showNotification": {
             "type": "boolean",
             "default": true,
             "description": "Show notification after successful paste"
