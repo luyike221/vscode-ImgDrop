@@ -1,6 +1,6 @@
 # ImgDrop
 
-在 VSCode 中编辑 Markdown 时，按 **Ctrl+V**（Mac：**Cmd+V**）可将剪贴板图片保存到指定目录，并在光标处插入 Markdown 图片链接；剪贴板为文字时则正常粘贴，不影响日常编辑。
+在 VSCode 中编辑 Markdown 时，按 **Ctrl+Q** 可将剪贴板图片保存到指定目录，并在光标处插入 Markdown 图片链接；剪贴板为文字时则正常粘贴，不影响日常编辑。
 
 ---
 
@@ -40,7 +40,7 @@ code --install-extension img-drop-1.1.0.vsix
 1. 克隆项目并用 VSCode 打开
 2. 执行 `npm install` 与 `npm run compile`
 3. 按 **F5** 启动扩展开发宿主
-4. 打开任意 `.md` 文件，从截图工具复制图片后按 **Ctrl+V**
+4. 打开任意 `.md` 文件，从截图工具复制图片后按 **Ctrl+Q**
 
 ---
 
@@ -111,7 +111,7 @@ vscode_plugin/
 
 ### 核心逻辑
 
-- **快捷键**：仅在 `editorLangId == markdown` 时绑定 `Ctrl+V`，其他文件不受影响
+- **快捷键**：仅在 `editorLangId == markdown` 时绑定 `Ctrl+Q`，其他文件不受影响
 - **剪贴板读取**：Windows / WSL 用 PowerShell；macOS 优先 `pngpaste`；Linux 用 `xclip` / `xsel`
 - **无图片时**：提示用户，可选择普通粘贴
 
@@ -125,3 +125,4 @@ npm install -g @vscode/vsce
 vsce package --allow-missing-repository
 code --install-extension img-drop-1.1.0.vsix
 ```
+![20260520_6ji2f2](assets/images/20260520_6ji2f2.png)
