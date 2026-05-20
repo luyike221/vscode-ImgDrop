@@ -125,4 +125,4 @@ npm install -g @vscode/vsce
 vsce package --allow-missing-repository
 code --install-extension img-drop-1.1.0.vsix
 ```
-![20260520_6ji2f2](assets/images/20260520_6ji2f2.png)
+
