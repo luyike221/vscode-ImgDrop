@@ -2,7 +2,7 @@
     "name": "img-drop",
     "displayName": "ImgDrop",
     "description": "Paste images from clipboard into Markdown files and save them automatically",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "publisher": "yx",
     "license": "MIT",
     "engines": {
@@ -22,6 +22,16 @@
         {
           "command": "imgDrop.openSettings",
           "title": "Open Settings",
+          "category": "ImgDrop"
+        },
+        {
+          "command": "imgDrop.setOssSecret",
+          "title": "Set OSS Access Key Secret",
+          "category": "ImgDrop"
+        },
+        {
+          "command": "imgDrop.clearOssSecret",
+          "title": "Clear OSS Access Key Secret",
           "category": "ImgDrop"
         }
       ],
@@ -79,6 +89,36 @@
             "type": "boolean",
             "default": true,
             "description": "Show notification after successful paste"
+          },
+          "imgDrop.storageMode": {
+            "type": "string",
+            "default": "local",
+            "enum": ["local", "oss"],
+            "enumDescriptions": [
+              "Save images to local directory",
+              "Upload images to Alibaba Cloud OSS (oss-only, no local file)"
+            ],
+            "description": "Where to store pasted images: local filesystem or Aliyun OSS"
+          },
+          "imgDrop.oss.region": {
+            "type": "string",
+            "default": "",
+            "description": "OSS region, e.g. oss-cn-hangzhou (required when storageMode is oss)"
+          },
+          "imgDrop.oss.bucket": {
+            "type": "string",
+            "default": "",
+            "description": "OSS bucket name (required when storageMode is oss)"
+          },
+          "imgDrop.oss.accessKeyId": {
+            "type": "string",
+            "default": "",
+            "description": "OSS AccessKey ID (required when storageMode is oss). Use RAM sub-account with minimal permissions."
+          },
+          "imgDrop.oss.objectPrefix": {
+            "type": "string",
+            "default": "imgdrop/",
+            "description": "Object key prefix in bucket. Supports path variables: ${year}, ${month}, ${date}, ${fileName}, etc."
           }
         }
       }
@@ -87,6 +127,9 @@
       "vscode:prepublish": "npm run compile",
       "compile": "tsc -p ./",
       "watch": "tsc -watch -p ./"
+    },
+    "dependencies": {
+      "ali-oss": "^6.23.0"
     },
     "devDependencies": {
       "@types/vscode": "^1.80.0",

@@ -4,6 +4,19 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import {
+  getStorageMode,
+  loadOssSettings,
+  buildObjectKey,
+  listMissingOssFields,
+  ossConfigErrorHint,
+} from './oss/config';
+import { uploadImageToOss } from './oss/upload';
+import {
+  getOssAccessKeySecret,
+  setOssAccessKeySecret,
+  clearOssAccessKeySecret,
+} from './oss/secrets';
 
 const execFileAsync = promisify(execFile);
 
@@ -278,8 +291,12 @@ async function getClipboardImageBuffer(format: string, quality: number): Promise
 
 // ─── Core Paste Logic ─────────────────────────────────────────────────────────
 
-async function pasteImage(editor: vscode.TextEditor): Promise<void> {
+async function pasteImage(
+  editor: vscode.TextEditor,
+  extensionContext: vscode.ExtensionContext
+): Promise<void> {
   const config = vscode.workspace.getConfiguration('imgDrop');
+  const storageMode = getStorageMode(config);
 
   const saveDirectory = config.get<string>('saveDirectory', '${fileDir}/assets/images');
   const fileNamePattern = config.get<string>('fileNamePattern', '${date}_${random}');
@@ -289,21 +306,42 @@ async function pasteImage(editor: vscode.TextEditor): Promise<void> {
   const mdTemplate = config.get<string>('mdTemplate', '![${fileName}](${imagePath})');
   const autoCreateDir = config.get<boolean>('autoCreateDir', true);
   const showNotification = config.get<boolean>('showNotification', true);
+  const objectPrefix = config.get<string>('oss.objectPrefix', 'imgdrop/');
 
   const mdFilePath = getMdFilePath(editor);
-  const resolvedDir = resolveVariables(saveDirectory, mdFilePath);
+  const resolveForMd = (template: string) => resolveVariables(template, mdFilePath);
 
-  if (!fs.existsSync(resolvedDir)) {
-    if (autoCreateDir) {
-      fs.mkdirSync(resolvedDir, { recursive: true });
-    } else {
-      vscode.window.showErrorMessage(`Save directory does not exist: ${resolvedDir}`);
+  if (storageMode === 'oss') {
+    const hasSecret = Boolean(await getOssAccessKeySecret(extensionContext.secrets));
+    const missing = listMissingOssFields(config, hasSecret);
+    if (missing.length > 0) {
+      const setSecret = '设置 OSS 密钥';
+      const choice = await vscode.window.showErrorMessage(
+        ossConfigErrorHint(missing),
+        setSecret
+      );
+      if (choice === setSecret) {
+        await vscode.commands.executeCommand('imgDrop.setOssSecret');
+      }
       return;
+    }
+  } else {
+    const resolvedDir = resolveForMd(saveDirectory);
+    if (!fs.existsSync(resolvedDir)) {
+      if (autoCreateDir) {
+        fs.mkdirSync(resolvedDir, { recursive: true });
+      } else {
+        vscode.window.showErrorMessage(`Save directory does not exist: ${resolvedDir}`);
+        return;
+      }
     }
   }
 
+  const progressTitle =
+    storageMode === 'oss' ? 'Reading clipboard & uploading to OSS...' : 'Reading clipboard...';
+
   await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: 'Reading clipboard...', cancellable: false },
+    { location: vscode.ProgressLocation.Notification, title: progressTitle, cancellable: false },
     async () => {
       const imageBuffer = await getClipboardImageBuffer(imageFormat, jpgQuality);
 
@@ -321,18 +359,33 @@ async function pasteImage(editor: vscode.TextEditor): Promise<void> {
         return;
       }
 
-      const resolvedName = resolveVariables(fileNamePattern, mdFilePath);
+      const resolvedName = resolveForMd(fileNamePattern);
       const ext = imageFormat === 'jpg' ? 'jpg' : imageFormat === 'webp' ? 'webp' : 'png';
       const imageFileName = `${resolvedName}.${ext}`;
-      const imageSavePath = path.join(resolvedDir, imageFileName);
-
-      fs.writeFileSync(imageSavePath, imageBuffer);
 
       let imageLinkPath: string;
-      if (mdLinkStyle === 'absolute') {
-        imageLinkPath = imageSavePath.replace(/\\/g, '/');
+      let notifyMessage: string;
+
+      if (storageMode === 'oss') {
+        const ossSettings = await loadOssSettings(config, extensionContext.secrets);
+        if (!ossSettings) {
+          vscode.window.showErrorMessage(ossConfigErrorHint(['OSS 配置']));
+          return;
+        }
+        const objectKey = buildObjectKey(objectPrefix, imageFileName, resolveForMd);
+        imageLinkPath = await uploadImageToOss(ossSettings, objectKey, imageBuffer, ext);
+        notifyMessage = `Image uploaded to OSS: ${imageLinkPath}`;
       } else {
-        imageLinkPath = path.relative(path.dirname(mdFilePath), imageSavePath).replace(/\\/g, '/');
+        const resolvedDir = resolveForMd(saveDirectory);
+        const imageSavePath = path.join(resolvedDir, imageFileName);
+        fs.writeFileSync(imageSavePath, imageBuffer);
+
+        if (mdLinkStyle === 'absolute') {
+          imageLinkPath = imageSavePath.replace(/\\/g, '/');
+        } else {
+          imageLinkPath = path.relative(path.dirname(mdFilePath), imageSavePath).replace(/\\/g, '/');
+        }
+        notifyMessage = `Image saved: ${imageSavePath}`;
       }
 
       const mdSnippet = mdTemplate
@@ -349,7 +402,7 @@ async function pasteImage(editor: vscode.TextEditor): Promise<void> {
       });
 
       if (showNotification) {
-        vscode.window.showInformationMessage(`Image saved: ${imageSavePath}`);
+        vscode.window.showInformationMessage(notifyMessage);
       }
     }
   );
@@ -371,7 +424,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     try {
-      await pasteImage(editor);
+      await pasteImage(editor, context);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       vscode.window.showErrorMessage(`Failed to paste image: ${msg}`);
@@ -382,7 +435,33 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand('workbench.action.openSettings', 'imgDrop');
   });
 
-  context.subscriptions.push(pasteCmd, settingsCmd);
+  const setOssSecretCmd = vscode.commands.registerCommand('imgDrop.setOssSecret', async () => {
+    const secret = await vscode.window.showInputBox({
+      title: 'ImgDrop: OSS Access Key Secret',
+      prompt: '密钥将保存在 VS Code SecretStorage，不会写入 settings.json',
+      password: true,
+      ignoreFocusOut: true,
+      validateInput: (v) => (v.trim() ? undefined : '密钥不能为空'),
+    });
+    if (secret === undefined) {
+      return;
+    }
+    await setOssAccessKeySecret(context.secrets, secret.trim());
+    vscode.window.showInformationMessage('OSS Access Key Secret 已保存。');
+  });
+
+  const clearOssSecretCmd = vscode.commands.registerCommand('imgDrop.clearOssSecret', async () => {
+    const choice = await vscode.window.showWarningMessage(
+      '确定清除已保存的 OSS Access Key Secret？',
+      '清除'
+    );
+    if (choice === '清除') {
+      await clearOssAccessKeySecret(context.secrets);
+      vscode.window.showInformationMessage('OSS Access Key Secret 已清除。');
+    }
+  });
+
+  context.subscriptions.push(pasteCmd, settingsCmd, setOssSecretCmd, clearOssSecretCmd);
 }
 
 export function deactivate() {}

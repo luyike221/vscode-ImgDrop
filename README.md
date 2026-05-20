@@ -11,6 +11,7 @@
 - 无图片：回退为普通文字粘贴
 - 支持 PNG / JPG / WebP 输出
 - 支持路径变量，灵活配置保存目录与文件名
+- 可选 **阿里云 OSS**：配置后仅上传 OSS（`oss-only`），插入 Bucket 公网 URL
 
 ---
 
@@ -60,6 +61,13 @@ code --install-extension img-drop-1.1.0.vsix
 | `mdTemplate` | 见下方「Markdown 模板」 | 插入的 Markdown 模板 |
 | `autoCreateDir` | `true` | 目录不存在时自动创建 |
 | `showNotification` | `true` | 保存成功后弹出通知 |
+| `storageMode` | `local` | 存储方式：`local`（本地）/ `oss`（仅上传 OSS） |
+| `oss.region` | — | OSS 地域，如 `oss-cn-hangzhou` |
+| `oss.bucket` | — | Bucket 名称 |
+| `oss.accessKeyId` | — | AccessKey ID（建议 RAM 子账号） |
+| `oss.objectPrefix` | `imgdrop/` | 对象路径前缀，支持路径变量 |
+
+> **OSS 密钥**：`AccessKey Secret` **不会**写入 `settings.json`，请用命令 **ImgDrop: Set OSS Access Key Secret** 保存到 SecretStorage。
 
 ### 路径变量
 
@@ -81,9 +89,12 @@ code --install-extension img-drop-1.1.0.vsix
 
 ### 配置示例
 
+**本地保存（默认）**
+
 ```jsonc
 // settings.json
 {
+  "imgDrop.storageMode": "local",
   "imgDrop.saveDirectory": "${fileDir}/assets/${year}/${month}",
   "imgDrop.fileNamePattern": "${fileName}_${time}",
   "imgDrop.imageFormat": "jpg",
@@ -92,6 +103,25 @@ code --install-extension img-drop-1.1.0.vsix
 }
 ```
 
+**阿里云 OSS（仅上传，不写本地）**
+
+```jsonc
+{
+  "imgDrop.storageMode": "oss",
+  "imgDrop.oss.region": "oss-cn-hangzhou",
+  "imgDrop.oss.bucket": "my-bucket",
+  "imgDrop.oss.accessKeyId": "LTAIxxxxxxxx",
+  "imgDrop.oss.objectPrefix": "blog/${year}/${month}/",
+  "imgDrop.fileNamePattern": "${date}_${random}"
+}
+```
+
+然后执行命令面板：**ImgDrop: Set OSS Access Key Secret**，输入 Secret。
+
+插入的链接形如：`https://{bucket}.{region}.aliyuncs.com/{objectKey}`（Bucket 需开启公共读或绑定静态网站/CDN）。
+
+**安全建议**：使用 RAM 子账号，仅授予目标 Bucket 前缀下的 `PutObject` 权限；不要将 Secret 提交到 Git。
+
 ---
 
 ## 开发
@@ -99,8 +129,9 @@ code --install-extension img-drop-1.1.0.vsix
 ### 项目结构
 
 ```
-vscode_plugin/
+vscode-ImgDrop/
 ├── src/extension.ts      # 插件主逻辑
+├── src/oss/              # OSS 上传与密钥
 ├── package.json          # 清单（快捷键、配置、命令）
 ├── tsconfig.json
 ├── .vscode/
